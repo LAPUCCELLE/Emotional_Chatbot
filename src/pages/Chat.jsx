@@ -4,7 +4,8 @@ import ChatBubble from '../components/ChatBubble'
 import TypingIndicator from '../components/TypingIndicator'
 import MoodScale from '../components/MoodScale'
 import { sendMessage, resetChat } from '../services/claude'
-import { saveSession } from '../utils/storage'
+import { saveSessionToFirestore } from '../utils/firestoreStorage'
+import { useAuth } from '../context/AuthContext'
 import { CRISIS_RESOURCES } from '../utils/messages'
 import styles from './Chat.module.css'
 
@@ -25,6 +26,7 @@ const ROUTES = [
 
 export default function Chat() {
   const navigate     = useNavigate()
+  const { uid }      = useAuth()
   const initialized  = useRef(false)
   const endRef       = useRef(null)
 
@@ -118,7 +120,7 @@ export default function Chat() {
     const val = selectedMood
     setSelectedMood(null)
     addUser(`Ahora me siento ${val} de 10`)
-    saveSession({ moodStart, moodEnd: val, route: 'conversacional', journalEntries: [] })
+    if (uid) saveSessionToFirestore(uid, { moodStart, moodEnd: val, route: 'conversacional', journalEntries: [] })
     setPhase(PHASE.DONE)
     await botSay(`El usuario termino con estado ${val}/10, habia comenzado con ${moodStart}/10. Haz una comparacion empatica y despidete con calidez.`)
   }
