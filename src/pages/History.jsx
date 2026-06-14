@@ -1,11 +1,14 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getSessions } from '../utils/storage'
+import { useAuth } from '../context/AuthContext'
+import { getSessionsFromFirestore } from '../utils/firestoreStorage'
 import styles from './History.module.css'
 
 const ROUTE_LABELS = {
-  breathing: 'Respiracion',
-  journaling: 'Journaling',
-  libre: 'Sesion libre',
+  respiracion:    'Respiracion',
+  escritura:      'Escritura',
+  conversacional: 'Conversacion libre',
+  libre:          'Sesion libre',
 }
 
 const MOOD_COLORS = {
@@ -16,14 +19,14 @@ const MOOD_COLORS = {
 
 function formatDate(iso) {
   const d = new Date(iso)
-  return d.toLocaleDateString('es-CL', {
+  return d.toLocaleDateString('es-PE', {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
   })
 }
 
 function MoodArrow({ start, end }) {
   if (end == null) return <span style={{ color: MOOD_COLORS[start] }}>{start}</span>
-  const diff = end - start
+  const diff  = end - start
   const arrow = diff > 1 ? '↑' : diff < -1 ? '↓' : '→'
   return (
     <span className={styles.moodFlow}>
@@ -35,8 +38,18 @@ function MoodArrow({ start, end }) {
 }
 
 export default function History() {
-  const navigate = useNavigate()
-  const sessions = getSessions()
+  const navigate          = useNavigate()
+  const { uid }           = useAuth()
+  const [sessions, setSessions] = useState([])
+  const [loading, setLoading]   = useState(true)
+
+  useEffect(() => {
+    if (!uid) return
+    getSessionsFromFirestore(uid)
+      .then(data => setSessions(data))
+      .catch(err => console.error('Error cargando historial:', err))
+      .finally(() => setLoading(false))
+  }, [uid])
 
   return (
     <div className="screen">
@@ -50,7 +63,11 @@ export default function History() {
       </div>
 
       <div className={styles.content}>
-        {sessions.length === 0 ? (
+        {loading ? (
+          <div className={styles.empty}>
+            <p className={styles.emptyText}>Cargando...</p>
+          </div>
+        ) : sessions.length === 0 ? (
           <div className={styles.empty}>
             <p className={styles.emptyText}>Aun no tienes sesiones guardadas.</p>
             <p className={styles.emptyHint}>Cuando completes una sesion, aparecera aqui.</p>
