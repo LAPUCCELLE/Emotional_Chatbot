@@ -3,23 +3,6 @@ export const MESSAGES = {
     'Hola, me alegra que estes aqui.',
     'Este es tu espacio personal para pausar y cuidarte un poco.',
   ],
-  checkin: [
-    'Antes de comenzar, quiero saber como estas.',
-    'En una escala del 1 al 10, como describiras tu estado de animo ahora mismo?',
-  ],
-  checkinAck: {
-    low: 'Gracias por decirme eso. Que te sientas asi tiene todo el sentido.',
-    mid: 'Entiendo. Vamos a acompanarte un poco hoy.',
-    high: 'Me alegra escuchar eso. Veamos que podemos hacer juntos hoy.',
-  },
-  crisis: [
-    'Gracias por compartir eso conmigo. Lo que estas sintiendo es valido.',
-    'No estas solo/a, y mereces recibir apoyo de alguien que pueda acompanarte de verdad.',
-    'Por favor, comunicate con alguno de estos recursos hoy:',
-  ],
-  routes: [
-    'Bien. Que sientes que necesitas en este momento?',
-  ],
   breathingIntro: [
     'Vamos a hacer un ejercicio de respiracion juntos.',
     'No hay apuro. Avanza a tu propio ritmo.',
@@ -35,15 +18,6 @@ export const MESSAGES = {
   journalingEnd: [
     'Gracias por compartir eso. Lo que sientes es completamente valido.',
   ],
-  checkout: [
-    'Hemos terminado la sesion de hoy.',
-    'Como te sientes ahora, comparado con cuando llegaste?',
-  ],
-  checkoutComparison: {
-    better: 'Me alegra que hayas encontrado un poco de alivio hoy.',
-    same: 'A veces simplemente acompanarnos ya es suficiente. Fue un paso importante.',
-    worse: 'Esta bien si no te sientes mejor aun. Lo importante es que te diste este espacio.',
-  },
 }
 
 export const JOURNALING_QUESTIONS = [

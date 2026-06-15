@@ -1,17 +1,18 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { initAuth } from '../services/firebase'
+import { initAuth, loginWithGoogle, logout } from '../services/firebase'
+import { saveUserProfile } from '../utils/firestoreStorage'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [uid, setUid]       = useState(null)
+  const [user, setUser]     = useState(null)
   const [ready, setReady]   = useState(false)
   const [error, setError]   = useState(null)
 
   useEffect(() => {
     initAuth()
-      .then(user => {
-        setUid(user.uid)
+      .then(u => {
+        setUser(u)
         setReady(true)
       })
       .catch(err => {
@@ -20,6 +21,20 @@ export function AuthProvider({ children }) {
         setReady(true)
       })
   }, [])
+
+  async function handleLoginWithGoogle() {
+    try {
+      const user = await loginWithGoogle()
+      setUser(user)
+      await saveUserProfile(user)
+    } catch (err) {
+      console.error('Error al conectar con Google:', err)
+    }
+  }
+
+  async function handleLogout() {
+    setUser(await logout())
+  }
 
   if (!ready) {
     return (
@@ -30,7 +45,14 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ uid, error }}>
+    <AuthContext.Provider value={{
+      uid: user?.uid ?? null,
+      user,
+      isAnonymous: user?.isAnonymous ?? true,
+      loginWithGoogle: handleLoginWithGoogle,
+      logout: handleLogout,
+      error,
+    }}>
       {children}
     </AuthContext.Provider>
   )

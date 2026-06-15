@@ -44,16 +44,25 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
-    const response = await client.messages.create({
+    const stream = client.messages.stream({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 400,
-      system: SYSTEM_PROMPT,
+      system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
       messages,
     })
-    res.json({ text: response.content[0].text })
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+    stream.on('text', chunk => res.write(chunk))
+
+    await stream.finalMessage()
+    res.end()
   } catch (err) {
     console.error('[Claude API Error]', err.message)
-    res.status(500).json({ error: err.message })
+    if (res.headersSent) {
+      res.end()
+    } else {
+      res.status(500).json({ error: err.message })
+    }
   }
 })
 
