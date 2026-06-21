@@ -1,5 +1,12 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth'
+import {
+  getAuth,
+  signInAnonymously,
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+} from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -14,6 +21,8 @@ const firebaseConfig = {
 const app  = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const db   = getFirestore(app)
+
+const googleProvider = new GoogleAuthProvider()
 
 export function initAuth() {
   return new Promise((resolve, reject) => {
@@ -31,4 +40,15 @@ export function initAuth() {
       }
     })
   })
+}
+
+export async function loginWithGoogle() {
+  const { user } = await signInWithPopup(auth, googleProvider)
+  return user
+}
+
+export async function logout() {
+  await signOut(auth)
+  const credential = await signInAnonymously(auth)
+  return credential.user
 }

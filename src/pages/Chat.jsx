@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import ChatBubble from '../components/ChatBubble'
 import TypingIndicator from '../components/TypingIndicator'
 import MoodScale from '../components/MoodScale'
-import { sendMessage, resetChat } from '../services/claude'
+import { sendMessage, resetChat, setMemory } from '../services/claude'
 import { saveSessionToFirestore } from '../utils/firestoreStorage'
 import { useAuth } from '../context/AuthContext'
-import { CRISIS_RESOURCES } from '../utils/messages'
+import { MESSAGES, CRISIS_RESOURCES, BREATHING_STEPS, JOURNALING_QUESTIONS } from '../utils/messages'
 import styles from './Chat.module.css'
 
 const PHASE = {
@@ -14,6 +14,8 @@ const PHASE = {
   CHECKIN:      'checkin',
   CRISIS:       'crisis',
   ROUTING:      'routing',
+  BREATHING:    'breathing',
+  JOURNALING:   'journaling',
   CONVERSATION: 'conversation',
   CHECKOUT:     'checkout',
   DONE:         'done',
@@ -36,6 +38,15 @@ export default function Chat() {
   const [input, setInput]               = useState('')
   const [selectedMood, setSelectedMood] = useState(null)
   const [moodStart, setMoodStart]       = useState(null)
+  const [selectedRoute, setSelectedRoute] = useState(null)
+
+  const [breathingStarted, setBreathingStarted] = useState(false)
+  const [breathingStep, setBreathingStep]       = useState(0)
+
+  const [journalStarted, setJournalStarted] = useState(false)
+  const [journalIndex, setJournalIndex]     = useState(0)
+  const [journalDraft, setJournalDraft]     = useState('')
+  const [journalEntries, setJournalEntries] = useState([])
 
   useEffect(() => {
     if (initialized.current) return
@@ -58,9 +69,18 @@ export default function Chat() {
 
   async function botSay(trigger) {
     setLoading(true)
+    const id = crypto.randomUUID()
+    let started = false
     try {
-      const text = await sendMessage(trigger)
-      addBot(text)
+      const text = await sendMessage(trigger, chunk => {
+        if (!started) {
+          started = true
+          setLoading(false)
+          setMsgs(prev => [...prev, { id, role: 'bot', text: chunk }])
+        } else {
+          setMsgs(prev => prev.map(m => (m.id === id ? { ...m, text: m.text + chunk } : m)))
+        }
+      })
       return text
     } catch {
       addBot('Perdon, hubo un problema de conexion. Intenta de nuevo.')
@@ -79,6 +99,7 @@ export default function Chat() {
     setSelectedMood(null)
     setMoodStart(val)
     addUser(`Mi estado de animo es ${val} de 10`)
+    setMemory(`Animo inicial ${val}/10.`)
 
     if (val <= 3) {
       setPhase(PHASE.CRISIS)
@@ -89,10 +110,67 @@ export default function Chat() {
     }
   }
 
-  async function handleRouteSelect(route) {
+  function handleRouteSelect(route) {
     addUser(route.label)
+    setSelectedRoute(route.id)
+    if (route.id === 'respiracion') {
+      setPhase(PHASE.BREATHING)
+      MESSAGES.breathingIntro.forEach(addBot)
+    } else {
+      setPhase(PHASE.JOURNALING)
+      MESSAGES.journalingIntro.forEach(addBot)
+    }
+  }
+
+  function startBreathing() {
+    setBreathingStarted(true)
+    addBot(BREATHING_STEPS[0].text)
+  }
+
+  function nextBreathingStep() {
+    const next = breathingStep + 1
+    if (next < BREATHING_STEPS.length) {
+      setBreathingStep(next)
+      addBot(BREATHING_STEPS[next].text)
+    } else {
+      finishBreathing()
+    }
+  }
+
+  async function finishBreathing() {
+    MESSAGES.breathingEnd.forEach(addBot)
     setPhase(PHASE.CONVERSATION)
-    await botSay(`El usuario eligio: "${route.label}". Comienza a guiarlo en esa actividad con calma y calidez.`)
+    setMemory(`Animo inicial ${moodStart}/10. El usuario completo un ejercicio de respiracion guiada.`)
+    await botSay('El usuario termino el ejercicio de respiracion guiada. Pregunta como se siente ahora y si quiere conversar sobre algo mas, o si prefiere finalizar la sesion.')
+  }
+
+  function startJournaling() {
+    setJournalStarted(true)
+    addBot(JOURNALING_QUESTIONS[0])
+  }
+
+  function submitJournalAnswer() {
+    const text = journalDraft.trim()
+    if (!text) return
+    addUser(text)
+    setJournalDraft('')
+    const updated = [...journalEntries, text]
+    setJournalEntries(updated)
+
+    const next = journalIndex + 1
+    if (next < JOURNALING_QUESTIONS.length) {
+      setJournalIndex(next)
+      addBot(JOURNALING_QUESTIONS[next])
+    } else {
+      finishJournaling(updated)
+    }
+  }
+
+  async function finishJournaling(entries) {
+    MESSAGES.journalingEnd.forEach(addBot)
+    setPhase(PHASE.CONVERSATION)
+    setMemory(`Animo inicial ${moodStart}/10. El usuario completo un ejercicio de journaling con ${entries.length} respuestas escritas.`)
+    await botSay('El usuario termino de escribir sus pensamientos en el ejercicio de journaling. Reconoce brevemente lo que compartio y pregunta si quiere conversar sobre algo mas, o si prefiere finalizar la sesion.')
   }
 
   async function handleSend() {
@@ -119,10 +197,21 @@ export default function Chat() {
   async function handleMoodCheckout() {
     const val = selectedMood
     setSelectedMood(null)
-    addUser(`Ahora me siento ${val} de 10`)
-    if (uid) saveSessionToFirestore(uid, { moodStart, moodEnd: val, route: 'conversacional', journalEntries: [] })
+    const checkoutText = `Ahora me siento ${val} de 10`
+    addUser(checkoutText)
     setPhase(PHASE.DONE)
-    await botSay(`El usuario termino con estado ${val}/10, habia comenzado con ${moodStart}/10. Haz una comparacion empatica y despidete con calidez.`)
+    const farewell = await botSay(`El usuario termino con estado ${val}/10, habia comenzado con ${moodStart}/10. Haz una comparacion empatica y despidete con calidez.`)
+
+    if (uid) {
+      const fullMsgs = [...msgs, { role: 'user', text: checkoutText }, { role: 'bot', text: farewell || '' }]
+      saveSessionToFirestore(uid, {
+        moodStart,
+        moodEnd: val,
+        route: selectedRoute || 'conversacional',
+        journalEntries,
+        messages: fullMsgs.map(m => ({ role: m.role, text: m.text })),
+      })
+    }
   }
 
   // El input de texto es visible en todas las fases conversacionales
@@ -185,6 +274,63 @@ export default function Chat() {
                 </svg>
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Ejercicio de respiracion guiada */}
+        {phase === PHASE.BREATHING && !loading && (
+          <div className={styles.contextualUI}>
+            {!breathingStarted ? (
+              <button className="btn-primary" onClick={startBreathing}>
+                Comenzar ejercicio
+              </button>
+            ) : (
+              <>
+                <p className={styles.hint}>Paso {breathingStep + 1} de {BREATHING_STEPS.length}</p>
+                <button className="btn-primary" onClick={nextBreathingStep}>
+                  {breathingStep === BREATHING_STEPS.length - 1 ? 'Finalizar' : 'Siguiente paso'}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Ejercicio de journaling guiado */}
+        {phase === PHASE.JOURNALING && !loading && (
+          <div className={styles.textZone}>
+            {!journalStarted ? (
+              <button className="btn-primary" onClick={startJournaling}>
+                Comenzar
+              </button>
+            ) : (
+              <div className={styles.inputRow}>
+                <textarea
+                  className={styles.textarea}
+                  value={journalDraft}
+                  onChange={e => setJournalDraft(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      submitJournalAnswer()
+                    }
+                  }}
+                  placeholder="Escribe tu respuesta... (Enter para enviar)"
+                  rows={2}
+                  autoFocus
+                />
+                <button
+                  className={styles.sendBtn}
+                  onClick={submitJournalAnswer}
+                  disabled={!journalDraft.trim()}
+                  aria-label="Enviar"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
         )}
 

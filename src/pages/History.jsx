@@ -2,54 +2,56 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getSessionsFromFirestore } from '../utils/firestoreStorage'
+import { ROUTE_LABELS, formatDate } from '../utils/mood'
+import MoodArrow from '../components/MoodArrow'
 import styles from './History.module.css'
-
-const ROUTE_LABELS = {
-  respiracion:    'Respiracion',
-  escritura:      'Escritura',
-  conversacional: 'Conversacion libre',
-  libre:          'Sesion libre',
-}
-
-const MOOD_COLORS = {
-  1: '#EF4444', 2: '#F97316', 3: '#FB923C',
-  4: '#FBBF24', 5: '#EAB308', 6: '#A3E635',
-  7: '#4ADE80', 8: '#22C55E', 9: '#16A34A', 10: '#15803D',
-}
-
-function formatDate(iso) {
-  const d = new Date(iso)
-  return d.toLocaleDateString('es-PE', {
-    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-  })
-}
-
-function MoodArrow({ start, end }) {
-  if (end == null) return <span style={{ color: MOOD_COLORS[start] }}>{start}</span>
-  const diff  = end - start
-  const arrow = diff > 1 ? '↑' : diff < -1 ? '↓' : '→'
-  return (
-    <span className={styles.moodFlow}>
-      <span style={{ color: MOOD_COLORS[start] }}>{start}</span>
-      <span className={styles.arrow}>{arrow}</span>
-      <span style={{ color: MOOD_COLORS[end] }}>{end}</span>
-    </span>
-  )
-}
 
 export default function History() {
   const navigate          = useNavigate()
-  const { uid }           = useAuth()
+  const { uid, user, isAnonymous, loginWithGoogle, logout } = useAuth()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState(null)
+
+  async function handleGoogleLogin() {
+    try {
+      await loginWithGoogle()
+    } catch (err) {
+      console.error('Error al conectar con Google:', err)
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      await logout()
+    } catch (err) {
+      console.error('Error al cerrar sesion:', err)
+    }
+  }
 
   useEffect(() => {
     if (!uid) return
-    getSessionsFromFirestore(uid)
-      .then(data => setSessions(data))
-      .catch(err => console.error('Error cargando historial:', err))
-      .finally(() => setLoading(false))
-  }, [uid])
+
+    // Usuario anonimo sin sesiones: evita la consulta y muestra el estado vacio de inmediato
+    if (isAnonymous) {
+      setLoading(false)
+      return
+    }
+
+    async function loadSessions() {
+      try {
+        const data = await getSessionsFromFirestore(uid)
+        setSessions(data)
+      } catch (err) {
+        console.error('Error cargando historial:', err)
+        setError('No pudimos cargar tu historial. Intenta de nuevo mas tarde.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadSessions()
+  }, [uid, isAnonymous])
 
   return (
     <div className="screen">
@@ -60,12 +62,25 @@ export default function History() {
           </svg>
         </button>
         <h2 className={styles.title}>Mi historial</h2>
+        {isAnonymous ? (
+          <button className={styles.accountBtn} onClick={handleGoogleLogin}>
+            Conectar con Google
+          </button>
+        ) : (
+          <button className={styles.accountBtn} onClick={handleLogout} title={user?.email}>
+            {user?.displayName?.split(' ')[0] || 'Cuenta'} · Salir
+          </button>
+        )}
       </div>
 
       <div className={styles.content}>
         {loading ? (
           <div className={styles.empty}>
             <p className={styles.emptyText}>Cargando...</p>
+          </div>
+        ) : error ? (
+          <div className={styles.empty}>
+            <p className={styles.emptyText}>{error}</p>
           </div>
         ) : sessions.length === 0 ? (
           <div className={styles.empty}>
@@ -75,12 +90,10 @@ export default function History() {
         ) : (
           <ul className={styles.list}>
             {sessions.map(s => (
-              <li key={s.id} className={styles.item}>
-                <div className={styles.itemDate}>{formatDate(s.date)}</div>
-                <div className={styles.itemRow}>
-                  <span className={styles.routeTag}>{ROUTE_LABELS[s.route] || s.route}</span>
-                  <MoodArrow start={s.moodStart} end={s.moodEnd} />
-                </div>
+              <li key={s.id} className={styles.item} onClick={() => navigate(`/history/${s.id}`)}>
+                <span className={styles.itemDate}>{formatDate(s.date)}</span>
+                <span className={styles.itemLabel}>{ROUTE_LABELS[s.route] || s.route}</span>
+                <MoodArrow start={s.moodStart} end={s.moodEnd} />
               </li>
             ))}
           </ul>
