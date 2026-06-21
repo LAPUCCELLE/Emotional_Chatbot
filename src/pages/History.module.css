@@ -26,6 +26,25 @@
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--text);
+  flex: 1;
+}
+
+.accountBtn {
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.accountBtn:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
 }
 
 .content {
@@ -59,52 +78,42 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
 .item {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.item:hover {
+  background: var(--bg);
 }
 
 .itemDate {
+  flex-shrink: 0;
+  width: 88px;
   font-size: 0.78rem;
   color: var(--text-muted);
   text-transform: capitalize;
 }
 
-.itemRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.routeTag {
-  font-size: 0.88rem;
+.itemLabel {
+  flex: 1;
+  font-size: 0.95rem;
   font-weight: 600;
-  color: var(--primary);
-  background: var(--primary-light);
-  padding: 3px 10px;
-  border-radius: 20px;
-}
-
-.moodFlow {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.arrow {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  font-weight: 400;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .footer {

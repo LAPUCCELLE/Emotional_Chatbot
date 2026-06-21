@@ -1,0 +1,13 @@
+.moodFlow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.arrow {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
