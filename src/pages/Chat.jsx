@@ -28,7 +28,7 @@ const ROUTES = [
 
 export default function Chat() {
   const navigate     = useNavigate()
-  const { uid }      = useAuth()
+  const { uid, user, isAnonymous, logout } = useAuth()
   const initialized  = useRef(false)
   const endRef       = useRef(null)
 
@@ -47,6 +47,8 @@ export default function Chat() {
   const [journalIndex, setJournalIndex]     = useState(0)
   const [journalDraft, setJournalDraft]     = useState('')
   const [journalEntries, setJournalEntries] = useState([])
+
+  const [hadCrisis, setHadCrisis] = useState(false)
 
   useEffect(() => {
     if (initialized.current) return
@@ -102,6 +104,7 @@ export default function Chat() {
     setMemory(`Animo inicial ${val}/10.`)
 
     if (val <= 3) {
+      setHadCrisis(true)
       setPhase(PHASE.CRISIS)
       await botSay(`El usuario indica estado de animo ${val}/10. Expresa contencion emocional genuina. No sugieras actividades aun.`)
     } else {
@@ -218,34 +221,78 @@ export default function Chat() {
   const showInput = [PHASE.CHECKIN, PHASE.ROUTING, PHASE.CONVERSATION, PHASE.CRISIS].includes(phase)
 
   return (
-    <div className="screen">
-      <div className={styles.header}>
-        <button className={styles.iconBtn} onClick={() => navigate('/')} aria-label="Volver">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
-        <div className={styles.botInfo}>
-          <span className={styles.botName}>Alma</span>
-          <span className={styles.botSub}>Asistente de bienestar</span>
+    <div className={`screen ${styles.chatLayout}`}>
+
+      {/* Sidebar — solo visible en desktop */}
+      <aside className={styles.sidebar}>
+        <div className={styles.sidebarBrand}>
+          <div className={styles.sidebarLogoIcon}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+          </div>
+          <div>
+            <div className={styles.sidebarName}>Alma</div>
+            <div className={styles.sidebarSub}>Espacio Contigo</div>
+          </div>
         </div>
-        <button className={styles.iconBtn} onClick={() => navigate('/history')} aria-label="Historial">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-        </button>
-      </div>
+        <nav className={styles.sidebarNav}>
+          <button className={styles.sidebarNavBtn} onClick={() => navigate('/')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            Inicio
+          </button>
+          <button className={styles.sidebarNavBtn} onClick={() => navigate('/history')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            Mi historial
+          </button>
+        </nav>
+        <div className={styles.sidebarFooter}>
+          {isAnonymous ? (
+            <span className={styles.sidebarUserHint}>Sin cuenta guardada</span>
+          ) : (
+            <>
+              <span className={styles.sidebarUserName}>{user?.displayName}</span>
+              <button className={styles.sidebarLogout} onClick={logout}>Cerrar sesion</button>
+            </>
+          )}
+        </div>
+      </aside>
 
-      <div className={styles.messages}>
-        {msgs.map(m => (
-          <ChatBubble key={m.id} role={m.role}>{m.text}</ChatBubble>
-        ))}
-        {loading && <TypingIndicator />}
-        <div ref={endRef} />
-      </div>
+      {/* Panel principal del chat */}
+      <div className={styles.chatMain}>
+        <div className={styles.header}>
+          <button className={styles.iconBtn} onClick={() => navigate('/')} aria-label="Volver">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <div className={styles.botInfo}>
+            <span className={styles.botName}>Alma</span>
+            <span className={styles.botSub}>Asistente de bienestar</span>
+          </div>
+          <button className={styles.iconBtn} onClick={() => navigate('/history')} aria-label="Historial">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </button>
+        </div>
 
-      <div className={styles.inputArea}>
+        <div className={styles.messages}>
+          {msgs.map(m => (
+            <ChatBubble key={m.id} role={m.role}>{m.text}</ChatBubble>
+          ))}
+          {loading && <TypingIndicator />}
+          <div ref={endRef} />
+        </div>
+
+        <div className={styles.inputArea}>
 
         {/* Escala de animo - check-in */}
         {phase === PHASE.CHECKIN && !loading && (
@@ -362,6 +409,16 @@ export default function Chat() {
         {/* Fin de sesion */}
         {phase === PHASE.DONE && !loading && (
           <div className={styles.doneZone}>
+            {hadCrisis && (
+              <div className={styles.crisisZone}>
+                {CRISIS_RESOURCES.map((r, i) => (
+                  <div key={i} className={styles.resourceCard}>
+                    <p className={styles.resourceName}>{r.name}</p>
+                    <p className={styles.resourceDetail}>{r.detail}</p>
+                  </div>
+                ))}
+              </div>
+            )}
             <button className="btn-primary" onClick={() => navigate('/')}>
               Nueva sesion
             </button>
@@ -404,7 +461,8 @@ export default function Chat() {
           </div>
         )}
 
-      </div>
+      </div>{/* /inputArea */}
+      </div>{/* /chatMain */}
     </div>
   )
 }
