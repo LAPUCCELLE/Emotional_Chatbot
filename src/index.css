@@ -95,3 +95,10 @@ body {
   cursor: pointer;
   width: 100%;
 }
+
+/* ===== Desktop layout base ===== */
+@media (min-width: 768px) {
+  .screen {
+    max-width: 960px;
+  }
+}
