@@ -199,3 +199,216 @@
   flex-direction: column;
   gap: 10px;
 }
+
+/* ===== Desktop layout ===== */
+
+.chatLayout { /* extiende .screen, sin cambios en móvil */ }
+
+.chatMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar { display: none; }
+
+/* Sidebar styles (se aplican solo en desktop via media query) */
+.sidebarBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.sidebarLogoIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--primary-light);
+  border-radius: 12px;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.sidebarName {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.sidebarSub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.sidebarNav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  padding-top: 8px;
+}
+
+.sidebarNavBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text);
+  transition: background 0.15s, color 0.15s;
+  text-align: left;
+  width: 100%;
+}
+
+.sidebarNavBtn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.sidebarFooter {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebarUserName {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebarUserHint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.sidebarLogout {
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  align-self: flex-start;
+}
+
+.sidebarLogout:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ===== Breakpoint desktop ===== */
+@media (min-width: 768px) {
+  /* :global(.screen).chatLayout = especificidad 2 clases, gana a .screen solo */
+  :global(.screen).chatLayout {
+    flex-direction: row;
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+    min-height: 100dvh;
+    height: 100dvh;
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 240px;
+    min-width: 240px;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    padding: 24px 16px;
+    height: 100dvh;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .chatMain {
+    flex: 1;
+    min-width: 0;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Los botones de icono del header son redundantes en desktop (sidebar los reemplaza) */
+  .iconBtn {
+    display: none;
+  }
+
+  /* Header ocupa todo el ancho del panel */
+  .header {
+    padding: 14px 32px;
+    justify-content: flex-start;
+  }
+
+  /* Mensajes e inputs centrados con max-width */
+  .messages {
+    padding: 20px 0 12px;
+    max-width: 720px;
+    width: 100%;
+    align-self: center;
+  }
+
+  .inputArea {
+    max-width: 720px;
+    width: 100%;
+    align-self: center;
+  }
+
+  .contextualUI {
+    padding: 14px 0 20px;
+  }
+
+  .crisisZone {
+    padding: 14px 0 20px;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .resourceCard {
+    flex: 1;
+    min-width: 180px;
+  }
+
+  .textZone {
+    padding: 10px 0 18px;
+  }
+
+  .doneZone {
+    padding: 14px 0 20px;
+    flex-direction: row;
+  }
+
+  .doneZone :global(.btn-primary),
+  .doneZone :global(.btn-secondary) {
+    flex: 1;
+    width: auto;
+  }
+
+  .routeBtn {
+    padding: 16px 20px;
+  }
+}
