@@ -49,6 +49,17 @@ export default function Chat() {
   const [journalEntries, setJournalEntries] = useState([])
 
   const [hadCrisis, setHadCrisis] = useState(false)
+  const [streamingId, setStreamingId] = useState(null)
+
+  const charQueueRef = useRef([])
+  const drainTimerRef = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      clearInterval(drainTimerRef.current)
+      charQueueRef.current = []   // unblocks any pending drain-wait on unmount
+    }
+  }, [])
 
   useEffect(() => {
     if (initialized.current) return
@@ -69,25 +80,52 @@ export default function Chat() {
     setMsgs(prev => [...prev, { id: crypto.randomUUID(), role: 'user', text }])
   }
 
+  function stopStream() {
+    clearInterval(drainTimerRef.current)
+    drainTimerRef.current = null
+    charQueueRef.current = []
+    setStreamingId(null)
+    setLoading(false)
+  }
+
   async function botSay(trigger) {
     setLoading(true)
     const id = crypto.randomUUID()
+    charQueueRef.current = []
     let started = false
+
     try {
       const text = await sendMessage(trigger, chunk => {
+        for (const char of chunk) charQueueRef.current.push(char)
         if (!started) {
           started = true
           setLoading(false)
-          setMsgs(prev => [...prev, { id, role: 'bot', text: chunk }])
-        } else {
-          setMsgs(prev => prev.map(m => (m.id === id ? { ...m, text: m.text + chunk } : m)))
+          setStreamingId(id)
+          setMsgs(prev => [...prev, { id, role: 'bot', text: '' }])
+          drainTimerRef.current = setInterval(() => {
+            const chars = charQueueRef.current.splice(0, 3).join('')
+            if (chars) {
+              setMsgs(prev => prev.map(m => m.id === id ? { ...m, text: m.text + chars } : m))
+            }
+          }, 20)
         }
       })
+
+      // Drain remaining queue before returning
+      await new Promise(resolve => {
+        const check = setInterval(() => {
+          if (charQueueRef.current.length === 0) {
+            clearInterval(check)
+            resolve()
+          }
+        }, 20)
+      })
+
+      stopStream()
       return text
     } catch {
+      stopStream()
       addBot('Perdon, hubo un problema de conexion. Intenta de nuevo.')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -286,7 +324,7 @@ export default function Chat() {
 
         <div className={styles.messages}>
           {msgs.map(m => (
-            <ChatBubble key={m.id} role={m.role}>{m.text}</ChatBubble>
+            <ChatBubble key={m.id} role={m.role} streaming={m.id === streamingId}>{m.text}</ChatBubble>
           ))}
           {loading && <TypingIndicator />}
           <div ref={endRef} />
